@@ -5,9 +5,9 @@ Voice chat prototype for [Vector](https://vectorapp.io) users, with a planned pr
 ## Status
 
 - Experimental WebRTC browser-to-browser audio and a Node.js signaling API.
-- Vector SDK invite bot is a **draft**; no live Vector integration has been verified.
+- Vector SDK invite bot **compiles in GitHub Actions**, but a live Vector message round trip has not been verified.
 - Signaling and authentication can be tested automatically.
-- **Not yet verified:** audible Mac↔Android calls, WebRTC interoperability across networks, Vector bot build, end-to-end Nostr identity verification, or livestreaming.
+- **Not yet verified:** audible Mac↔Android calls, WebRTC interoperability across networks, a real Vector DM invocation, end-to-end Nostr identity verification, or livestreaming.
 - This is **not** native Vector audio calling, and transport encryption is not proof of Nostr-identity-bound end-to-end media authentication.
 
 ## Local development
