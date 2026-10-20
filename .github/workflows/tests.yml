@@ -14,6 +14,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm test
+      - run: bash -n scripts/test-call-mac.sh
   rust-bot:
     runs-on: ubuntu-latest
     timeout-minutes: 20
