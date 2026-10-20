@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+node_modules/
+*.log
+.DS_Store
+dist/
+target/
+vector-bot/target/
+*.nsec
