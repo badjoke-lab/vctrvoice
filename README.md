@@ -48,3 +48,26 @@ Vector SDK bot (separate Nostr identity) → private invite link → HTTPS Node.
 5. Video livestream + comments.
 
 The source license is not yet selected; no license is implied by a public repository.
+
+## Mac + Android real-device smoke test
+
+Requires **Node.js 22+**, [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/), and macOS with an active microphone.
+
+```bash
+brew install cloudflared
+git clone https://github.com/badjoke-lab/vctrvoice.git
+cd vctrvoice
+bash scripts/test-call-mac.sh
+```
+
+The script creates a disposable HTTPS Quick Tunnel and prints an invitation URL. Open **the entire link** on the Mac and on Android, allow microphone access on both, and confirm (a) WebRTC connection reaches `connected`, (b) audio packet counters increase, and (c) **you can hear speech in both directions**. A signaling test alone is insufficient.
+
+Because this first test uses a STUN server but no TURN deployment, calls across certain NATs and networks can fail even if the code works. The Quick Tunnel URL is temporary, not a production deployment.
+
+## Experimental Vector SDK bot
+
+The Rust source is in `vector-bot/`. To operate it, configure **a separate bot** `VECTOR_NSEC`, `VOICE_CREATE_KEY` matching the server, `VOICE_SERVER`, and an explicit `VECTOR_VOICE_ALLOWED_NPUBS` list. Never use a personal account's nsec. The bot accepts `/voice` only in direct messages from allowed npubs. **Passing `cargo check` is not equivalent to verifying a live message round trip.**
+
+```bash
+cargo check --manifest-path vector-bot/Cargo.toml
+```
