@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>vctrvoice — experimental voice chat</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0b111c;color:#edf3ff;min-height:100dvh;display:grid;place-items:center;margin:0;padding:18px}
+main{width:min(520px,100%);background:#141e2e;border:1px solid #2a3b55;border-radius:20px;padding:26px}
+small{color:#94aaca}h1{margin:8px 0 14px;font-size:27px}p{color:#c6d5e9;line-height:1.55}
+button{font:inherit;color:white;background:#355ace;border:0;border-radius:9px;padding:12px 15px;cursor:pointer;margin:5px 5px 5px 0}
+button:disabled{opacity:.45;cursor:not-allowed}.secondary{background:#31435d}.hidden{display:none}
+#invite{word-break:break-all;padding:11px;background:#091321;border-radius:9px;font-size:12px;color:#c4d5f8}
+#status{font-weight:650}audio{display:block;margin-top:14px;width:100%}hr{border:0;border-top:1px solid #33445a;margin:18px 0}
+#diagnostics{font-size:12px}
+</style>
+</head>
+<body><main>
+<small>VECTOR / vctrvoice — PROTOTYPE</small>
+<h1>ボイスチャット</h1>
+<p>Vectorで招待リンクを送る、実験的な1対1 WebRTC通話です。Vector本体の通話機能ではありません。</p>
+<p id="status" aria-live="polite">準備中…</p>
+<div id="create"><button id="createButton" disabled>通話ルームを作成</button></div>
+<section id="room" class="hidden">
+<p>この招待リンクは相手にのみ送ってください。</p>
+<div id="invite"></div>
+<button id="copyButton" class="secondary">リンクをコピー</button><hr>
+<button id="joinButton">マイクを有効にして参加</button>
+<button id="playButton" class="hidden">相手の音声を再生</button>
+<button id="muteButton" class="secondary" disabled>ミュート</button>
+<button id="leaveButton" class="secondary" disabled>退出</button>
+<audio id="remoteAudio" autoplay playsinline controls></audio>
+</section>
+<p><small>最大2人・ルーム2時間・サーバー側に録音保存なし。リンクを知る人は参加できます。Nostr IDと通話相手の本人確認は未実装です。</small></p>
+<p id="diagnostics">接続診断：未接続</p>
+</main><script type="module" src="/client.js"></script></body>
+</html>
