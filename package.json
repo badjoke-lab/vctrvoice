@@ -1,0 +1,14 @@
+{
+  "name": "vctrvoice",
+  "version": "0.5.0",
+  "private": true,
+  "type": "module",
+  "description": "Vector voice call experimental prototype",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --check server.mjs && node --check public/client.js && node --test test/*.test.mjs"
+  }
+}
