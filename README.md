@@ -22,7 +22,7 @@ A separate Vector SDK bot prepares a reusable native voice channel and discussio
 
 - Source: [native-stage-bot/](native-stage-bot/)
 - Vector **app** compatibility target: `v0.5.1`
-- Vector **Rust SDK** dependency: `vector_sdk = "=0.11.0"` (different version series)
+- Vector **Rust SDK** package reports `0.11.0`, but the prototype fetches it from the Vector **v0.5.1 Git tag** because its published crate has an obsolete, yanked Nostr dependency. The Nostr fork is pinned to the commit used by Vector v0.5.1.
 - The bot must already be a member of the Community and have **Manage Channels** permission.
 - **Do not use a personal Nostr private key:** create a bot-only `nsec`.
 - It accepts `/stage` only by DM from explicitly allowlisted npubs, and **only provisions channels**.
