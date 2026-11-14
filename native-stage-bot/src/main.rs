@@ -76,17 +76,6 @@ async fn prepare(bot: &VectorBot, id: &str) -> Result<Channels, String> {
         community.create_channel(VOICE_NAME).await.map_err(|e| e.to_string())?
     };
 
-    // Native Vector Core knows the voice channel view.
-    bot.core()
-        .edit_channel_details(
-            id,
-            &voice,
-            VOICE_NAME,
-            Some("vctrvoice: Native voice session; a session marker is not proof of audio transmission"),
-            "voice",
-        )
-        .await.map_err(|e| format!("Set voice view: {e}"))?;
-
     if !channels.iter().any(|c| c.name() == COMMENTS_NAME) {
         community.create_channel(COMMENTS_NAME).await
             .map_err(|e| format!("Create comments: {e}"))?;
@@ -95,7 +84,11 @@ async fn prepare(bot: &VectorBot, id: &str) -> Result<Channels, String> {
         community.create_private_channel(CONTROL_NAME).await
             .map_err(|e| format!("Create private control: {e}"))?;
     }
-    find_channels(bot, id).await
+    let ch = find_channels(bot, id).await?;
+    // On first setup, conversion to a native voice view is completed by the
+    // command handler after reconstructing the session status.
+    let _ = voice;
+    Ok(ch)
 }
 
 async fn latest_status(bot: &VectorBot, control_id: &str) -> Result<StageStatus, String> {
@@ -153,13 +146,31 @@ async fn main() -> vector_sdk::Result<()> {
                 let settings = Arc::clone(&settings);
                 async move {
                     if !authorized(&ctx, &settings) { return; }
-                    let _guard = settings.serial.lock().await;
+                    let mut runtime = settings.serial.lock().await;
                     let result = prepare(&ctx.bot, &settings.community_id).await;
                     let message = match result {
-                        Ok(ch) => format!(
-                            "Stage channels prepared.\nVoice: {VOICE_NAME} ({})\nComments: {COMMENTS_NAME} ({})\nPrivate control: {CONTROL_NAME} ({})\n\nNo broadcast has started. Use /stage-start to open a session.",
-                            ch.voice, ch.comments, ch.control
-                        ),
+                        Ok(ch) => {
+                            // Read-your-own-writes: repeated /stage must not erase
+                            // the OPEN topic of an already-running session.
+                            match current_status(&mut runtime, &ctx.bot, &ch.control).await {
+                                Ok(status) => {
+                                    let topic = match &status {
+                                        StageStatus::Open(id) => format!("Session OPEN ({id}) — not proof of audio transmission"),
+                                        StageStatus::Closed => "Session CLOSED — no broadcast-only roles are enforced".into(),
+                                    };
+                                    match ctx.bot.core().edit_channel_details(
+                                        &settings.community_id, &ch.voice, VOICE_NAME, Some(&topic), "voice"
+                                    ).await {
+                                        Ok(()) => format!(
+                                            "Stage channels prepared.\nVoice: {VOICE_NAME} ({})\nComments: {COMMENTS_NAME} ({})\nPrivate control: {CONTROL_NAME} ({})\n\nSession: {:?}. Use /stage-start to open, /stage-end to close.",
+                                            ch.voice, ch.comments, ch.control, status
+                                        ),
+                                        Err(err) => format!("Channels exist, but setting native voice view failed: {err}"),
+                                    }
+                                }
+                                Err(err) => format!("Channels exist, but reading session state failed: {err}"),
+                            }
+                        }
                         Err(err) => format!("Stage preparation failed: {err}"),
                     };
                     let _ = ctx.reply(message).await;
