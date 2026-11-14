@@ -29,5 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Compile native stage adapter against Vector SDK 0.11.0
+      - name: Check Vector native stage controller against v0.5.1 SDK source
         run: cargo check --manifest-path native-stage-bot/Cargo.toml
+      - name: Test stage lifecycle state machine
+        run: cargo test --manifest-path native-stage-bot/Cargo.toml
