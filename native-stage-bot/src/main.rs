@@ -18,7 +18,13 @@ const CONTROL_NAME: &str = "vctrvoice-live-control";
 struct Settings {
     admins: HashSet<String>,
     community_id: String,
-    serial: Mutex<()>,
+    serial: Mutex<Runtime>,
+}
+
+struct Runtime {
+    // Guarantees read-your-own-writes within this one bot process.
+    // An initial None must be populated from the private Vector control channel.
+    status: Option<StageStatus>,
 }
 
 struct Channels {
@@ -105,6 +111,15 @@ async fn latest_status(bot: &VectorBot, control_id: &str) -> Result<StageStatus,
     Ok(stage_state::replay(owned))
 }
 
+async fn current_status(runtime: &mut Runtime, bot: &VectorBot, control_id: &str) -> Result<StageStatus, String> {
+    if let Some(status) = &runtime.status {
+        return Ok(status.clone());
+    }
+    let status = latest_status(bot, control_id).await?;
+    runtime.status = Some(status.clone());
+    Ok(status)
+}
+
 async fn post_comment(bot: &VectorBot, comment_id: &str, text: &str) -> Result<(), String> {
     bot.channel(comment_id).send(text).await
         .map(|_| ()).map_err(|e| e.to_string())
@@ -128,7 +143,7 @@ async fn main() -> vector_sdk::Result<()> {
 
     let bot = VectorBot::builder().nsec(nsec).build().await?;
     let settings = Arc::new(Settings {
-        admins, community_id, serial: Mutex::new(()),
+        admins, community_id, serial: Mutex::new(Runtime { status: None }),
     });
 
     {
@@ -138,7 +153,7 @@ async fn main() -> vector_sdk::Result<()> {
                 let settings = Arc::clone(&settings);
                 async move {
                     if !authorized(&ctx, &settings) { return; }
-                    let _guard = settings.serial.lock().await;
+                    let _guard = settings.serial.lock().await;let mut runtime = settings.serial.lock().await;
                     let result = prepare(&ctx.bot, &settings.community_id).await;
                     let message = match result {
                         Ok(ch) => format!(
@@ -159,12 +174,12 @@ async fn main() -> vector_sdk::Result<()> {
                 let settings = Arc::clone(&settings);
                 async move {
                     if !authorized(&ctx, &settings) { return; }
-                    let _guard = settings.serial.lock().await;
+                    let mut runtime = settings.serial.lock().await;
                     let ch = match find_channels(&ctx.bot, &settings.community_id).await {
                         Ok(ch) => ch,
                         Err(err) => { let _ = ctx.reply(err).await; return; }
                     };
-                    match latest_status(&ctx.bot, &ch.control).await {
+                    match current_status(&mut runtime, &ctx.bot, &ch.control).await {
                         Ok(StageStatus::Open(id)) => {
                             let _ = ctx.reply(format!("Session already open ({id}). No duplicate announcement was sent.")).await;
                             return;
@@ -179,6 +194,7 @@ async fn main() -> vector_sdk::Result<()> {
                         let _ = ctx.reply(format!("Could not record session start: {err}")).await;
                         return;
                     }
+                    runtime.status = Some(StageStatus::Open(id.clone()));
                     // State is durable once the control message is sent. Secondary
                     // operations may fail independently and are never described as succeeded.
                     let notice = format!(
@@ -206,12 +222,12 @@ async fn main() -> vector_sdk::Result<()> {
                 let settings = Arc::clone(&settings);
                 async move {
                     if !authorized(&ctx, &settings) { return; }
-                    let _guard = settings.serial.lock().await;
+                    let mut runtime = settings.serial.lock().await;
                     let ch = match find_channels(&ctx.bot, &settings.community_id).await {
                         Ok(ch) => ch,
                         Err(err) => { let _ = ctx.reply(err).await; return; }
                     };
-                    let id = match latest_status(&ctx.bot, &ch.control).await {
+                    let id = match current_status(&mut runtime, &ctx.bot, &ch.control).await {
                         Ok(StageStatus::Open(id)) => id,
                         Ok(StageStatus::Closed) => {
                             let _ = ctx.reply("No open session.").await;
@@ -224,6 +240,7 @@ async fn main() -> vector_sdk::Result<()> {
                         let _ = ctx.reply(format!("Could not record session end: {err}")).await;
                         return;
                     }
+                    runtime.status = Some(StageStatus::Closed);
                     let comment = post_comment(
                         &ctx.bot, &ch.comments, &format!("⏹️ vctrvoice session closed ({id}).")
                     ).await;
@@ -249,12 +266,12 @@ async fn main() -> vector_sdk::Result<()> {
                 let settings = Arc::clone(&settings);
                 async move {
                     if !authorized(&ctx, &settings) { return; }
-                    let _guard = settings.serial.lock().await;
+                    let mut runtime = settings.serial.lock().await;
                     let ch = match find_channels(&ctx.bot, &settings.community_id).await {
                         Ok(ch) => ch,
                         Err(err) => { let _ = ctx.reply(err).await; return; }
                     };
-                    let message = match latest_status(&ctx.bot, &ch.control).await {
+                    let message = match current_status(&mut runtime, &ctx.bot, &ch.control).await {
                         Ok(StageStatus::Open(id)) => format!("Session OPEN ({id})\nVoice: {}\nComments: {}\nThis is bookkeeping, NOT a media-stream health check.", ch.voice, ch.comments),
                         Ok(StageStatus::Closed) => format!("Session CLOSED\nVoice: {}\nComments: {}", ch.voice, ch.comments),
                         Err(err) => format!("Could not read session status: {err}"),
