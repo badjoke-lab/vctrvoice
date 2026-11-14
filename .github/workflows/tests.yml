@@ -1,7 +1,11 @@
-name: Prototype CI
+name: vctrvoice CI
 on:
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: vctrvoice-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
