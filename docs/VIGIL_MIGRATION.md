@@ -22,23 +22,27 @@ The previous Node.js / WebRTC prototype is retained as a historical experiment a
 
 ## Phase A — native Vector stage pilot (this PR)
 
-An independent Vector SDK bot creates (or reuses) two **Community** channels:
+An independent Vector SDK bot creates (or reuses) three **Community** channels:
 
 1. `vctrvoice-live-stage` — upgraded to the native `voice` channel view using Vector Core.
-2. `vctrvoice-live-comments` — a native Community text channel for messages during the pilot.
+2. `vctrvoice-live-comments` — a native Community text channel for audience comments and start/end notices.
+3. `vctrvoice-live-control` — a **private** bot-readable channel containing bot-authored session OPEN/CLOSE markers.
 
-An allowlisted administrator sends `/stage` to the bot in a **DM**. The bot needs its own `nsec`, must already be a member of the target Community and have **Manage Channels** permission. It must **never** use a user's nsec. An in-process mutex limits simultaneous duplicate provisioning.
+An allowlisted administrator sends `/stage` to the bot in a **DM**. The bot needs its own `nsec`, must already be a member of the target Community and have **Manage Channels** permission. It must **never** use a user's nsec. Other DM commands: `/stage-start` opens a session, posts an announcement and sets the native voice channel topic; `/stage-status` reads persisted control history (or the in-process cache) and reports the session marker; `/stage-end` closes the session and announces its end. An in-process mutex serializes these operations. **Only one bot process per Community** is supported; this does not provide a distributed lock.
 
-This pilot proves channel provisioning and reuses Vector-native calls. It does **not** yet implement livestream broadcasting, viewer-only roles, on-video comment overlays, a viewer count, recording, or a cross-platform streaming UI. **Creating voice and text channels must not be reported as launching a livestream.**
+The marker protocol has unit tests for valid sessions, malformed input, mismatched closure, repeated sessions, and unrelated messages. State survives a restart subject to relay persistence and successful sync. `/stage-start` does NOT prove that native media is flowing. `/stage-end` does NOT force anyone to disconnect. No listener-only transmission permission is enforced.
+
+This pilot prepares native channels and records the lifecycle. It does **not** yet implement livestream broadcasting, viewer-only roles, on-video comment overlays, a viewer count, recording, or a cross-platform streaming UI. **Creating channels or an OPEN marker must not be reported as launching a livestream.**
 
 ### Pilot acceptance
 
-- [ ] The Rust code compiles against SDK 0.11.0.
-- [ ] An authorized admin's private `/stage` creates the exact voice + text channels in a test Community.
+- [x] The Rust code compiles against Vector v0.5.1-tagged SDK source (package 0.11.0), and the lifecycle unit tests pass in GitHub Actions.
+- [ ] An authorized admin's private `/stage` creates the exact voice, comments, and private control channels in a test Community.
 - [ ] A second `/stage` invocation reuses the same channels, without creating duplicates.
 - [ ] An unauthorized DM or Community message cannot provision channels.
 - [ ] Vector v0.5.1 on Android and desktop can both join the native voice channel.
-- [ ] Native chat channel messages appear on both clients.
+- [ ] Native comments and start/end announcements appear on both clients.
+- [ ] Bot restart retains the OPEN/CLOSED state from the control channel and duplicate `/stage-start` does not open a second session.
 - [ ] Privacy and role behavior are checked before public use.
 
 ## Phase B — audio livestream + comments
