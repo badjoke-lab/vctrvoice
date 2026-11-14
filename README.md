@@ -1,73 +1,66 @@
 # vctrvoice
 
-Voice chat prototype for [Vector](https://vectorapp.io) users, with a planned progression: **1:1 voice → group voice → audio livestream + comments → video livestream + comments**.
+**Vector-native live audio and live video — under development.**
 
-## Status
+## Direction after Vector v0.5.1 (Vigil)
 
-- Experimental WebRTC browser-to-browser audio and a Node.js signaling API.
-- Vector SDK invite bot **compiles in GitHub Actions**, but a live Vector message round trip has not been verified.
-- Signaling and authentication can be tested automatically.
-- **Not yet verified:** audible Mac↔Android calls, WebRTC interoperability across networks, a real Vector DM invocation, end-to-end Nostr identity verification, or livestreaming.
-- This is **not** native Vector audio calling, and transport encryption is not proof of Nostr-identity-bound end-to-end media authentication.
+Vector v0.5.0 (November 5, 2026) introduced **built-in voice/video calls, Community voice channels, camera and desktop screen sharing, and Vector Web**. The current app release is **v0.5.1** (November 7).
 
-## Local development
+**We do not need to reimplement basic voice chat.** vctrvoice now focuses on:
 
-Requires Node.js 22+.
+1. **Native voice stage pilot:** prepare a Vector voice channel, comments, and a private session-control channel. Manage opening/closing/status.
+2. **Audio livestream + live comments:** host/speaker vs listener roles, synchronized comments, moderation and audience UX.
+3. **Video livestream + live comments:** camera/screen capture, viewer scaling, comments overlay and recovery.
 
-```bash
-npm test
-VOICE_CREATE_KEY="$(openssl rand -hex 32)" PORT=8787 node server.mjs
-```
+The first item is a **native channel + session-lifecycle pilot**, not an audio/video livestream.
 
-To create a room:
+[Read the complete migration and acceptance criteria](docs/VIGIL_MIGRATION.md).
 
-```bash
-curl -s -X POST http://127.0.0.1:8787/api/rooms -H "x-voice-admin-key: $VOICE_CREATE_KEY"
-```
+## Native stage pilot (experimental)
 
-Use the generated invitation URL on two devices. A production deployment requires HTTPS and reliable STUN/TURN relay capacity; **do not share private invitation links publicly**.
+A separate Vector SDK bot prepares a reusable native voice channel, a discussion channel, and a private control channel for an existing Vector Community. Session markers are written to the private channel, and start/end notices are posted to the discussion channel.
 
-## Safety / deployment
+- Source: [native-stage-bot/](native-stage-bot/)
+- Vector **app** compatibility target: `v0.5.1`
+- Vector **Rust SDK** package reports `0.11.0`, but the prototype fetches it from the Vector **v0.5.1 Git tag** because its published crate has an obsolete, yanked Nostr dependency. The Nostr fork is pinned to the commit used by Vector v0.5.1.
+- The bot must already be a member of the Community and have **Manage Channels** permission.
+- **Do not use a personal Nostr private key:** create a bot-only `nsec`.
+- It accepts `/stage`, `/stage-start`, `/stage-status` and `/stage-end` only by DM from explicitly allowlisted npubs. They **provision channels and manage session markers**, but do not transmit audio/video or enforce listener-only permissions.
 
-- Room creation is denied unless `VOICE_CREATE_KEY` is configured.
-- Invites grant access to the room; they do not cryptographically prove a user's Nostr identity.
-- Browser WebRTC can expose network addresses to call peers; do not use this experimental prototype for sensitive communication.
-- Never commit `nsec`, API keys, TURN secrets, or generated invitations.
-- The service uses in-memory rooms (a restart invalidates them), a two-hour room expiry, and max two participants.
-
-## Architecture
-
-Vector SDK bot (separate Nostr identity) → private invite link → HTTPS Node.js signaling → WebRTC audio between browsers. Vector transports chat/invite messages, **not** audio packets.
-
-## Roadmap
-
-1. Verify real Mac + Android two-way audio and recover from network changes.
-2. Compile and validate SDK bot, then integrate Vector DMs and room invitations.
-3. Extend room roles and implement group voice using a suitable SFU.
-4. Audio livestream + comments.
-5. Video livestream + comments.
-
-The source license is not yet selected; no license is implied by a public repository.
-
-## Mac + Android real-device smoke test
-
-Requires **Node.js 22+**, [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/), and macOS with an active microphone.
+Build without using any identity:
 
 ```bash
-brew install cloudflared
-git clone https://github.com/badjoke-lab/vctrvoice.git
-cd vctrvoice
-bash scripts/test-call-mac.sh
+cargo test --manifest-path native-stage-bot/Cargo.toml
 ```
 
-The script creates a disposable HTTPS Quick Tunnel and prints an invitation URL. Open **the entire link** on the Mac and on Android, allow microphone access on both, and confirm (a) WebRTC connection reaches `connected`, (b) audio packet counters increase, and (c) **you can hear speech in both directions**. A signaling test alone is insufficient.
-
-Because this first test uses a STUN server but no TURN deployment, calls across certain NATs and networks can fail even if the code works. The Quick Tunnel URL is temporary, not a production deployment.
-
-## Experimental Vector SDK bot
-
-The Rust source is in `vector-bot/`. To operate it, configure **a separate bot** `VECTOR_NSEC`, `VOICE_CREATE_KEY` matching the server, `VOICE_SERVER`, and an explicit `VECTOR_VOICE_ALLOWED_NPUBS` list. Never use a personal account's nsec. The bot accepts `/voice` only in direct messages from allowed npubs. **Passing `cargo check` is not equivalent to verifying a live message round trip.**
+To run the bot against a test Community, provide the following environment variables **outside of Git**:
 
 ```bash
-cargo check --manifest-path vector-bot/Cargo.toml
+VECTOR_NSEC='nsec1...BOT_KEY_NOT_YOUR_KEY' \
+VCTRVOICE_COMMUNITY_ID='64_HEX_COMMUNITY_ID' \
+VCTRVOICE_STAGE_ADMINS='npub1...admin' \
+cargo run --manifest-path native-stage-bot/Cargo.toml
 ```
+
+Send `/stage` to the bot in a **private DM** as one of the permitted admins. It creates/reuses `vctrvoice-live-stage` (native voice view), `vctrvoice-live-comments` (text) and `vctrvoice-live-control` (private). Then use `/stage-start`, `/stage-status` and `/stage-end` to manage an event marker and post comments announcements. **This has not yet been exercised against a live Community.** An OPEN marker does **not** mean media is streaming; END does **not** disconnect participants. Member roles, transmission permissions, privacy and mobile compatibility still need real-device verification.
+
+[Stage bot commands and safety checklist](native-stage-bot/README.md).
+
+## Existing WebRTC prototype
+
+The previous standalone Node.js / WebRTC browser experiment remains in `server.mjs`, `public/`, `vector-bot/`, and `test/` as historical code. It is **not** the target app transport. It was never verified as a native Vector call.
+
+[Historical setup and test instructions](docs/LEGACY_WEBRTC_PROTOTYPE.md).
+
+## Validation and safety
+
+GitHub Actions checks the legacy standalone prototype, the native-stage Rust build **and its session state machine unit tests**. **Passing CI does not prove that the native stage works inside Vector.** The next milestones are creating the three channels in a test Community, verifying Android + desktop voice and comments participation, and then implementing true broadcast-only permissions and a unified comments UI.
+
+Never commit `nsec`, API keys, TURN credentials or invite secrets. No production livestream service is deployed.
+
+## Upstream
+
+- [Vector v0.5.0 (Vigil) release](https://github.com/VectorPrivacy/Vector/releases/tag/v0.5.0)
+- [Vector v0.5.1 release](https://github.com/VectorPrivacy/Vector/releases/tag/v0.5.1)
+
+The repository is public, but a public repo does not itself grant an open-source license.

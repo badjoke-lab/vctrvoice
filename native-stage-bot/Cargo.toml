@@ -1,0 +1,17 @@
+[package]
+name = "vctrvoice-native-stage-bot"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+vector_sdk = { git = "https://github.com/VectorPrivacy/Vector.git", tag = "v0.5.1", package = "vector_sdk" }
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1", features = ["v4"] }
+
+# Use upstream Vector v0.5.1 source, not the stale published 0.11.0 crate.
+# Its Nostr fork is pinned to the commit recorded in Vector v0.5.1's Cargo.lock.
+[patch.crates-io]
+nostr = { git = "https://github.com/VectorPrivacy/nostr.git", rev = "697e0a067a43c7b048d71916b7b0c2df6b03e4d0" }
+nostr-sdk = { git = "https://github.com/VectorPrivacy/nostr.git", rev = "697e0a067a43c7b048d71916b7b0c2df6b03e4d0" }
+nostr-database = { git = "https://github.com/VectorPrivacy/nostr.git", rev = "697e0a067a43c7b048d71916b7b0c2df6b03e4d0" }

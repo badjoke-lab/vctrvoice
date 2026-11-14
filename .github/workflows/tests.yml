@@ -1,7 +1,11 @@
-name: Prototype CI
+name: vctrvoice CI
 on:
   push:
+    branches: [main]
   pull_request:
+concurrency:
+  group: vctrvoice-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -22,3 +26,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo check --manifest-path vector-bot/Cargo.toml
+
+  native-stage-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Check Vector native stage controller against v0.5.1 SDK source
+        run: cargo check --manifest-path native-stage-bot/Cargo.toml
+      - name: Test stage lifecycle state machine
+        run: cargo test --manifest-path native-stage-bot/Cargo.toml
