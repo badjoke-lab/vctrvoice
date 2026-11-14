@@ -153,7 +153,7 @@ async fn main() -> vector_sdk::Result<()> {
                 let settings = Arc::clone(&settings);
                 async move {
                     if !authorized(&ctx, &settings) { return; }
-                    let _guard = settings.serial.lock().await;let mut runtime = settings.serial.lock().await;
+                    let _guard = settings.serial.lock().await;
                     let result = prepare(&ctx.bot, &settings.community_id).await;
                     let message = match result {
                         Ok(ch) => format!(
