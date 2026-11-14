@@ -21,9 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Resolve upstream yanked nostr-sdk pin explicitly
-        run: cargo update --manifest-path vector-bot/Cargo.toml -p nostr-sdk --precise 0.45.1
-      - run: cargo check --manifest-path vector-bot/Cargo.toml --locked
+      - run: cargo check --manifest-path vector-bot/Cargo.toml
 
   native-stage-bot:
     runs-on: ubuntu-latest
@@ -31,7 +29,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - name: Resolve upstream yanked nostr-sdk pin explicitly
-        run: cargo update --manifest-path native-stage-bot/Cargo.toml -p nostr-sdk --precise 0.45.1
       - name: Compile native stage adapter against Vector SDK 0.11.0
-        run: cargo check --manifest-path native-stage-bot/Cargo.toml --locked
+        run: cargo check --manifest-path native-stage-bot/Cargo.toml
