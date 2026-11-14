@@ -3,7 +3,7 @@
 ## Verified upstream baseline
 
 - **Vector app:** v0.5.1 (released 2026-11-07). v0.5.0 (2026-11-05) introduced DM voice/video calls, voice Community channels, camera and desktop screen sharing, roles/permissions and Vector Web.
-- **Vector Rust SDK:** `vector_sdk = "=0.11.0"` in the upstream `v0.5.1` tag. **Do not change the SDK dependency to 0.5.1**; app version and SDK version are not the same series.
+- **Vector Rust SDK:** the upstream `v0.5.1` tag still declares SDK package version `0.11.0` (app and SDK versions differ). The published 0.11.0 crate on crates.io requires yanked `nostr-sdk=0.45.1`. This pilot therefore uses the Vector **v0.5.1 git tag** and patches `nostr`, `nostr-sdk`, and `nostr-database` to the same pinned Vector-maintained fork revision as the official v0.5.1 lockfile. Do not arbitrarily bump SDK to 0.5.1.
 - SDK v0.11.0's `Community::create_channel()` creates a text channel. The SDK provides `VectorBot::core()`, enabling `VectorCore::edit_channel_details(..., "voice")` to change that channel to a voice view. This has been checked against tagged upstream source, not yet exercised against a running Community.
 - SDK `Channel::send` and `on_message` handle Community text messages. They do **not** automatically stream media, create a stage-only experience, or establish live viewing permissions.
 - Vector's own media path uses voice relay transport. **Do not send media packets through Nostr chat messages** and do not substitute the old browser WebRTC server for Vector's built-in call stack.
